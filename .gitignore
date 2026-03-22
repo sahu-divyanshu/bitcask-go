@@ -1,0 +1,8 @@
+# Compiled binaries
+bitcask
+*.exe
+
+# Database files
+/tmp/bitcask_dir/
+*.data
+*.tmp

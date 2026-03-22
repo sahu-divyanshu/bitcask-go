@@ -1,0 +1,159 @@
+
+══════════════════════════════════════════════════════════
+  OPEN
+══════════════════════════════════════════════════════════
+
+
+══════════════════════════════════════════════════════════
+  WRITE — fill beyond MaxFileSize (256 bytes) to force rotation
+══════════════════════════════════════════════════════════
+
+  [put]    key="username"    file=1774204153851442292  valOffset=24      size=9
+  [put]    key="city"        file=1774204153851442292  valOffset=53      size=7
+  [put]    key="language"    file=1774204153851442292  valOffset=84      size=6
+  [put]    key="framework"   file=1774204153851442292  valOffset=115     size=7
+  [put]    key="database"    file=1774204153851442292  valOffset=146     size=8
+  [put]    key="team"        file=1774204153851442292  valOffset=174     size=7
+  [put]    key="role"        file=1774204153851442292  valOffset=201     size=8
+  [put]    key="project"     file=1774204153851442292  valOffset=232     size=7
+  ── after initial writes ─────────────────────────────────────────────────────
+  Active    : 1774204153851442292.data  (239 bytes)
+
+
+══════════════════════════════════════════════════════════
+  DELETE + OVERWRITE — create stale records in immutable files
+══════════════════════════════════════════════════════════
+
+
+  ╔══════════════════════════════════════════════════════════╗
+  ║  FILE ROTATION                                            ║
+  ║  Froze  1774204153851442292.data (239 bytes) → immutable        ║
+  ║  Opened 1774204153851743438.data → new active                  ║
+  ╚══════════════════════════════════════════════════════════╝
+
+  [delete] key="city"        tombstone in file=1774204153851743438  offset=0
+  [put]    key="username"    file=1774204153851743438  valOffset=44      size=12
+  [put]    key="username"    file=1774204153851743438  valOffset=80      size=12
+  [put]    key="username"    file=1774204153851743438  valOffset=116     size=12
+  [put]    key="username"    file=1774204153851743438  valOffset=152     size=12
+  ── before merge ─────────────────────────────────────────────────────
+  Active    : 1774204153851743438.data  (164 bytes)
+  Immutable : 1774204153851442292.data  (239 bytes)
+
+
+  ── index before merge (7 live keys) ────────────────────────────────────
+  Key             FileID (ms)      Offset      ValSize   
+  ────────────────────────────────────────────────────────
+  "database"      1774204153851442292  146         8
+  "framework"     1774204153851442292  115         7
+  "language"      1774204153851442292  84          6
+  "project"       1774204153851442292  232         7
+  "role"          1774204153851442292  201         8
+  "team"          1774204153851442292  174         7
+  "username"      1774204153851743438  152         12
+
+
+══════════════════════════════════════════════════════════
+  MERGE — active file must remain untouched
+══════════════════════════════════════════════════════════
+
+  [merge]  6 live key(s) across 1 immutable file(s)
+  [merge]  active file 1774204153851743438.data is NOT touched
+  [merge]  merge file will get ID = 1774204153851442292 (oldest immutable ID)
+  [merge]  this guarantees merge file sorts BEFORE active file on restart
+
+  [merge]  key="database"    1774204153851442292@146     →  1774204153851442292@24    
+  [merge]  key="framework"   1774204153851442292@115     →  1774204153851442292@57    
+  [merge]  key="language"    1774204153851442292@84      →  1774204153851442292@88    
+  [merge]  key="project"     1774204153851442292@232     →  1774204153851442292@117   
+  [merge]  key="role"        1774204153851442292@201     →  1774204153851442292@144   
+  [merge]  key="team"        1774204153851442292@174     →  1774204153851442292@172   
+  [merge]  overwrote old immutable 1774204153851442292.data with compacted data
+
+  [merge]  done — 1774204153851442292.data (179 bytes) registered as immutable
+  [merge]  active file 1774204153851743438.data unchanged
+
+  ── after merge ─────────────────────────────────────────────────────
+  Active    : 1774204153851743438.data  (164 bytes)
+  Immutable : 1774204153851442292.data  (179 bytes)
+
+
+  ── index after merge (7 live keys) ────────────────────────────────────
+  Key             FileID (ms)      Offset      ValSize   
+  ────────────────────────────────────────────────────────
+  "database"      1774204153851442292  24          8
+  "framework"     1774204153851442292  57          7
+  "language"      1774204153851442292  88          6
+  "project"       1774204153851442292  117         7
+  "role"          1774204153851442292  144         8
+  "team"          1774204153851442292  172         7
+  "username"      1774204153851743438  152         12
+
+  ✅  Active file 1774204153851743438.data unchanged by Merge()
+
+
+══════════════════════════════════════════════════════════
+  VERIFY READS post-merge
+══════════════════════════════════════════════════════════
+
+  [get]    key="username"    file=1774204153851743438  offset=152     value="divyanshu_v4"
+  [get]    key="language"    file=1774204153851442292  offset=88      value="golang"
+  [get]    key="framework"   file=1774204153851442292  offset=57      value="fastapi"
+  [get]    key="database"    file=1774204153851442292  offset=24      value="postgres"
+  [get]    key="team"        file=1774204153851442292  offset=172     value="backend"
+  [get]    key="role"        file=1774204153851442292  offset=144     value="engineer"
+  [get]    key="project"     file=1774204153851442292  offset=117     value="bitcask"
+  [get]  "city"        ERROR: key "city" not found or deleted
+
+══════════════════════════════════════════════════════════
+  WRITE to active file after merge — prove writes still work
+══════════════════════════════════════════════════════════
+
+  [put]    key="post_merge"  file=1774204153851743438  valOffset=190     size=24
+
+══════════════════════════════════════════════════════════
+  CRASH RECOVERY — close, reopen, rebuild index
+══════════════════════════════════════════════════════════
+
+  merge file ID  < active file ID  must hold for correct replay order
+
+  merge file  ID = 1774204153851442292
+  active file ID = 1774204153851743438
+  ✅  1774204153851442292 < 1774204153851743438 — merge file sorts BEFORE active file on restart
+
+  [open]   found 2 data file(s)
+  [replay] 1774204153851442292  pos=0       key="database"    valOffset=24      size=8
+  [replay] 1774204153851442292  pos=32      key="framework"   valOffset=57      size=7
+  [replay] 1774204153851442292  pos=64      key="language"    valOffset=88      size=6
+  [replay] 1774204153851442292  pos=94      key="project"     valOffset=117     size=7
+  [replay] 1774204153851442292  pos=124     key="role"        valOffset=144     size=8
+  [replay] 1774204153851442292  pos=152     key="team"        valOffset=172     size=7
+  [open]   immutable 1774204153851442292.data  (179 bytes)
+  [replay] 1774204153851743438  pos=0       TOMBSTONE  key="city"
+  [replay] 1774204153851743438  pos=20      key="username"    valOffset=44      size=12
+  [replay] 1774204153851743438  pos=56      key="username"    valOffset=80      size=12
+  [replay] 1774204153851743438  pos=92      key="username"    valOffset=116     size=12
+  [replay] 1774204153851743438  pos=128     key="username"    valOffset=152     size=12
+  [replay] 1774204153851743438  pos=164     key="post_merge"  valOffset=190     size=24
+  [open]   active    1774204153851743438.data  (214 bytes)
+  [open]   index rebuilt — 8 live keys
+
+
+  ── recovered index (8 live keys) ────────────────────────────────────
+  Key             FileID (ms)      Offset      ValSize   
+  ────────────────────────────────────────────────────────
+  "database"      1774204153851442292  24          8
+  "framework"     1774204153851442292  57          7
+  "language"      1774204153851442292  88          6
+  "post_merge"    1774204153851743438  190         24
+  "project"       1774204153851442292  117         7
+  "role"          1774204153851442292  144         8
+  "team"          1774204153851442292  172         7
+  "username"      1774204153851743438  152         12
+
+  [get]    key="username"    file=1774204153851743438  offset=152     value="divyanshu_v4"
+  ✅  'username' = "divyanshu_v4"  (latest value preserved, not overwritten by merge)
+  [get]    key="post_merge"  file=1774204153851743438  offset=190     value="written_after_compaction"
+  ✅  'post_merge' = "written_after_compaction"  (written after compaction, survives restart)
+
+  ✅  'city' absent after recovery: key "city" not found or deleted
